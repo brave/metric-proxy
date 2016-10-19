@@ -1,0 +1,12 @@
+{
+  "name": "metric-proxy",
+  "version": "0.0.1",
+  "description": "cool",
+  "main": "index.js",
+  "author": "Ayumi Yu <ayumi@ayumiyu.com>",
+  "license": "MIT",
+  "dependencies": {
+    "http": "^0.0.0",
+    "httpdispatcher": "^1.0.0"
+  }
+}

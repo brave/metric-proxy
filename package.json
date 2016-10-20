@@ -1,12 +1,14 @@
 {
   "name": "metric-proxy",
   "version": "0.0.1",
-  "description": "cool",
+  "description": "proxy tracking metrics to protect user privacy",
   "main": "index.js",
   "author": "Ayumi Yu <ayumi@ayumiyu.com>",
   "license": "MIT",
   "dependencies": {
-    "fibers": "^1.0.15",
-    "httpdispatcher": "^1.0.0"
+    "express": "^4.14.0",
+    "mixpanel": "^0.5.0",
+    "pryjs": "^1.0.3",
+    "request": "^2.75.0"
   }
 }

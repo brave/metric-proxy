@@ -1,96 +1,85 @@
-var http = require('http')
-var dispatcher = require('httpdispatcher')
+// Dependencies
+// ===
 
-const PORT = 8080
+// web server
+const Express = require("express")
+
+// text which is hyper
+const Http = require("http")
+
+// better than debugger
+const Pry = require("pryjs")
+
+// HTTP requests
+const Request = require("request")
 
 
-var Fiber = require('fibers');
+// Config
+// ===
 
-// Generator function. Returns a function which returns incrementing
-// Fibonacci numbers with each call.
-function Fibonacci() {
-    // Create a new fiber which yields sequential Fibonacci numbers
-    var fiber = Fiber(() => {
-        Fiber.yield(0) // F(0) -> 0
-        var prev = 0, curr = 1
-        while (true) {
-            Fiber.yield(curr)
-            var tmp = prev + curr
-            prev = curr
-            curr = tmp
-        }
-    })
-    // Return a bound handle to `run` on this fiber
-    return fiber.run.bind(fiber)
+const MIXPANEL_API_HOST = process.env.MIXPANEL_API_HOST || "https://api.mixpanel.com"
+// e.g. token1234a,token5678b
+const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN.split(",")
+const PORT = process.env.PORT || 4000
+
+
+// Lib
+// ===
+
+function isValidMixpanelToken(token) {
+  if (!token) {
+    return false
+  }
+  return MIXPANEL_TOKEN_WHITELIST.includes(token)
 }
 
-// Initialize a new Fibonacci sequence and iterate up to 1597
-var seq = Fibonacci()
-var ii
 
+// App fn
+// ===
 
-
-var Future = require('fibers/future'), wait = Future.wait
-
-var n = 5000
-
-// This function returns a future which resolves after a timeout. This
-// demonstrates manually resolving futures.
-function sleep(ms) {
-  var future = new Future
-  setTimeout(() => {
-    future.return()
-  }, ms)
-  return future
-}
-
-// You can create functions which automatically run in their own fiber and
-// return futures that resolve when the fiber returns (this probably sounds
-// confusing.. just play with it to understand).
-var calcTimerDelta = function(ms) {
-  var start = new Date
-  sleep(ms).wait()
-  return new Date - start
-}.future() // <-- important!
-
-function resolved(err, val) {
-  n--
-  console.log('Set timer, waited ' + val + 'ms; n is ' + n)
-  calcTimerDelta(1000).resolve(resolved)
-}
-
-// And futures also include node-friendly callbacks if you don't want to use
-// wait()
-calcTimerDelta(1000).resolve(resolved)
-
-
-
-dispatcher.onGet("/", (req, res) => {
-  ii = seq()
-  console.log(ii)
-  n += 10
-
-  res.writeHead(200, {'Content-Type': 'text/plain'})
-  res.end(`heres ur number: ${ii}`)
-})
-
-dispatcher.onPost("/v1/track", (req, res) => {
-  res.writeHead(200, {'Content-Type': 'text/plain'})
-  res.end('u posted me')
-})
-
-
-function handleRequest(request, response) {
-    try {
-      console.log(request.url)
-      dispatcher.dispatch(request, response)
-    } catch(err) {
-      console.log(err)
+// https://mixpanel.com/help/reference/http
+function mixpanelTrack(request, response) {
+  try {
+    const dataString = new Buffer(request.query.data, "base64").toString("utf-8")
+    const data = JSON.parse(dataString)
+    if (!isValidMixpanelTrackData(data)) {
+      throw "Invalid data"
+    } else if (!isProbablyAnonymousData(data)) {
+      throw "Event contains identifying data"
     }
+
+    // /track supports other params but not sure if we want them
+    const queryString = { data: request.query.data, verbose: request.query.verbose }
+    const options = { qs: queryString }
+    Request(`${MIXPANEL_API_HOST}/track`, options).pipe(response)
+
+  } catch (_e) {
+    console.log(_e)
+    response.send("0")
+  }
 }
 
-var server = http.createServer(handleRequest)
+function isValidMixpanelTrackData(data) {
+  return (data.event && data.properties && isValidMixpanelToken(data.properties.token))
+}
 
-server.listen(PORT, () => {
-  console.log("Server listening on: http://localhost:%s", PORT)
+function isProbablyAnonymousData(data) {
+  return (data.properties && !data.properties.distinct_id && !data.properties.ip)
+}
+
+
+// App
+// ===
+
+var app = Express()
+
+app.get("/", (request, response) => {
+  res.send("hello friend")
 })
+
+app.get("/track", mixpanelTrack)
+app.post("/track", mixpanelTrack)
+
+app.listen(PORT)
+
+console.log(`metric-proxy up on localhost:${PORT}`)

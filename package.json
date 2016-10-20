@@ -6,7 +6,7 @@
   "author": "Ayumi Yu <ayumi@ayumiyu.com>",
   "license": "MIT",
   "dependencies": {
-    "http": "^0.0.0",
+    "fibers": "^1.0.15",
     "httpdispatcher": "^1.0.0"
   }
 }

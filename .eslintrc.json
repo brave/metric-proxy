@@ -1,0 +1,10 @@
+{
+    "plugins": ["node"],
+    "extends": ["eslint:recommended", "plugin:node/recommended"],
+    "rules": {
+        "node/exports-style": ["error", "module.exports"],
+        "node/no-unpublished-bin": "error",
+        "node/no-unsupported-features": ["error", {"version": 6}],
+        "node/process-exit-as-throw": "error"
+    }
+}

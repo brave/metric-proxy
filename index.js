@@ -1,17 +1,19 @@
+"use strict"
+
 // Dependencies
 // ===
 
 // web server
 const Express = require("express")
 
-// text which is hyper
-const Http = require("http")
-
 // better than debugger
 const Pry = require("pryjs")
 
 // HTTP requests
 const Request = require("request")
+
+// Logging
+const Winston = require("winston")
 
 
 // Config
@@ -25,6 +27,12 @@ const PORT = process.env.PORT || 4000
 
 // Lib
 // ===
+
+var logger = new (Winston.Logger)({
+  transports: [
+    new (Winston.transports.Console)()
+  ]
+})
 
 function isValidMixpanelToken(token) {
   if (!token) {
@@ -40,7 +48,7 @@ function isValidMixpanelToken(token) {
 // https://mixpanel.com/help/reference/http
 function mixpanelTrack(request, response) {
   try {
-    const dataString = new Buffer(request.query.data, "base64").toString("utf-8")
+    const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
     const data = JSON.parse(dataString)
     if (!isValidMixpanelTrackData(data)) {
       throw "Invalid data"
@@ -54,7 +62,7 @@ function mixpanelTrack(request, response) {
     Request(`${MIXPANEL_API_HOST}/track`, options).pipe(response)
 
   } catch (_e) {
-    console.log(_e)
+    logger.log('warn', _e)
     response.send("0")
   }
 }
@@ -72,9 +80,10 @@ function isProbablyAnonymousData(data) {
 // ===
 
 var app = Express()
+app.disable("x-powered-by")
 
 app.get("/", (request, response) => {
-  res.send("hello friend")
+  response.send("hello friend")
 })
 
 app.get("/track", mixpanelTrack)
@@ -82,4 +91,5 @@ app.post("/track", mixpanelTrack)
 
 app.listen(PORT)
 
-console.log(`metric-proxy up on localhost:${PORT}`)
+logger.log("info", `metric-proxy up on localhost:${PORT}`)
+logger.log("info", `MIXPANEL_API_HOST: ${MIXPANEL_API_HOST}`)

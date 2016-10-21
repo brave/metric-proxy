@@ -53,6 +53,7 @@ function mixpanelTrack(request, response) {
   try {
     const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
     const data = JSON.parse(dataString)
+    logger.info("-> /track")
     logger.debug("-> Query:", request.query)
     logger.debug("-> Data:", data)
     if (!isValidMixpanelTrackData(data)) {
@@ -77,7 +78,7 @@ function mixpanelTrack(request, response) {
       pipe(response)
 
   } catch (_e) {
-    logger.error(_e)
+    logger.error(_e.stack.split("\n").slice(0, 4).join(";"))
     response.send("0")
   }
 }

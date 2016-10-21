@@ -21,7 +21,7 @@ const Winston = require("winston")
 
 const MIXPANEL_API_HOST = process.env.MIXPANEL_API_HOST || "https://api.mixpanel.com"
 // e.g. token1234a,token5678b
-const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN.split(",")
+const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN_WHITELIST.split(",")
 const NODE_ENV = process.env.NODE_ENV || "development"
 const LOG_LEVEL = NODE_ENV === "production" ? "info" : "debug"
 const PORT = process.env.PORT || 4000

@@ -22,6 +22,8 @@ const Winston = require("winston")
 const MIXPANEL_API_HOST = process.env.MIXPANEL_API_HOST || "https://api.mixpanel.com"
 // e.g. token1234a,token5678b
 const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN.split(",")
+const NODE_ENV = process.env.NODE_ENV || "development"
+const LOG_LEVEL = NODE_ENV === "production" ? "info" : "debug"
 const PORT = process.env.PORT || 4000
 
 
@@ -29,6 +31,7 @@ const PORT = process.env.PORT || 4000
 // ===
 
 var logger = new (Winston.Logger)({
+  level: LOG_LEVEL,
   transports: [
     new (Winston.transports.Console)()
   ]
@@ -50,6 +53,8 @@ function mixpanelTrack(request, response) {
   try {
     const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
     const data = JSON.parse(dataString)
+    logger.debug("-> Query:", request.query)
+    logger.debug("-> Data:", data)
     if (!isValidMixpanelTrackData(data)) {
       throw "Invalid data"
     } else if (!isProbablyAnonymousData(data)) {
@@ -57,12 +62,22 @@ function mixpanelTrack(request, response) {
     }
 
     // /track supports other params but not sure if we want them
-    const queryString = { data: request.query.data, verbose: request.query.verbose }
+    const queryString = {
+      data: request.query.data,
+      img: request.query.img,
+      verbose: request.query.verbose
+    }
     const options = { qs: queryString }
-    Request(`${MIXPANEL_API_HOST}/track`, options).pipe(response)
+    logger.debug(`<- ${MIXPANEL_API_HOST}/track`, options)
+    Request(`${MIXPANEL_API_HOST}/track`, options).
+      on("error", (error) => {
+        logger.error(error)
+        response.status(502).send("0")
+      }).
+      pipe(response)
 
   } catch (_e) {
-    logger.log('warn', _e)
+    logger.error(_e)
     response.send("0")
   }
 }
@@ -91,5 +106,6 @@ app.post("/track", mixpanelTrack)
 
 app.listen(PORT)
 
-logger.log("info", `metric-proxy up on localhost:${PORT}`)
-logger.log("info", `MIXPANEL_API_HOST: ${MIXPANEL_API_HOST}`)
+logger.info(`MIXPANEL_API_HOST: ${MIXPANEL_API_HOST}`)
+logger.info(`NODE_ENV: ${NODE_ENV}`)
+logger.info(`metric-proxy up on localhost:${PORT}`)

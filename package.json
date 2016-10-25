@@ -1,6 +1,6 @@
 {
   "name": "metric-proxy",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "proxy tracking metrics to protect user privacy",
   "main": "index.js",
   "author": "Ayumi Yu <ayumi@ayumiyu.com>",

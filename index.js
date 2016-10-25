@@ -25,6 +25,7 @@ const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN_WHITELIST.split(",")
 const NODE_ENV = process.env.NODE_ENV || "development"
 const LOG_LEVEL = NODE_ENV === "production" ? "info" : "debug"
 const PORT = process.env.PORT || 4000
+const USER_AGENT = `metric-proxy/${process.env.npm_package_version} (brave.com)`
 
 
 // Lib
@@ -54,21 +55,31 @@ function mixpanelTrack(request, response) {
     const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
     const data = JSON.parse(dataString)
     logger.info("-> /track")
+    logger.debug("-> Headers:", request.headers)
+    logger.debug("-> Cookie:", request.headers.cookie)
     logger.debug("-> Query:", request.query)
     logger.debug("-> Data:", data)
     if (!isValidMixpanelTrackData(data)) {
       throw "Invalid data"
-    } else if (!isProbablyAnonymousData(data)) {
-      throw "Event contains identifying data"
     }
 
     // /track supports other params but not sure if we want them
-    const queryString = {
-      data: request.query.data,
-      img: request.query.img,
-      verbose: request.query.verbose
+    let queryString = {}
+    const queryStringParams = ["data", "img", "verbose"]
+    queryStringParams.forEach((value) => {
+      if (!request.query[value]) {
+        return
+      }
+      queryString[value] = request.query[value]
+    })
+    const options = {
+      headers: {
+        // 'Cookie': request.headers.cookie,
+        'User-Agent': USER_AGENT
+      },
+      qs: queryString
     }
-    const options = { qs: queryString }
+
     logger.debug(`<- ${MIXPANEL_API_HOST}/track`, options)
     Request(`${MIXPANEL_API_HOST}/track`, options).
       on("error", (error) => {
@@ -78,17 +89,17 @@ function mixpanelTrack(request, response) {
       pipe(response)
 
   } catch (_e) {
-    logger.error(_e.stack.split("\n").slice(0, 4).join(";"))
+    if (_e.stack) {
+      logger.error(_e.stack.split("\n").slice(0, 4).join(";"))
+    } else {
+      logger.error(_e)
+    }
     response.send("0")
   }
 }
 
 function isValidMixpanelTrackData(data) {
   return (data.event && data.properties && isValidMixpanelToken(data.properties.token))
-}
-
-function isProbablyAnonymousData(data) {
-  return (data.properties && !data.properties.distinct_id && !data.properties.ip)
 }
 
 

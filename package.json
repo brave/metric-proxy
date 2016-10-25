@@ -6,6 +6,7 @@
   "author": "Ayumi Yu <ayumi@ayumiyu.com>",
   "license": "MIT",
   "dependencies": {
+    "cookie-parser": "^1.4.3",
     "express": "^4.14.0",
     "mixpanel": "^0.5.0",
     "pryjs": "^1.0.3",

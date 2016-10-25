@@ -52,6 +52,52 @@ var logger = new (Winston.Logger)({
   ]
 })
 
+// Mixpanel query string includes:
+// - Original request query string -- certain params
+// - Certain other query params, moved from top level into query data.properties
+// - Persisted params from previous requests, via cookies
+function buildMixpanelTrackQueryString(request, response) {
+  const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
+  const data = JSON.parse(dataString)
+  if (!isValidMixpanelTrackData(data)) {
+    throw "Invalid data"
+  }
+
+  let queryString = { data }
+  // /track supports other params but not sure if we want them
+  const queryStringParams = ["img", "verbose"]
+  queryStringParams.forEach((value) => {
+    if (!request.query[value]) {
+      return
+    }
+    queryString[value] = request.query[value]
+  })
+
+  // Copy special params from query string
+  COOKIE_PERSISTED_PARAMS.forEach((key) => {
+    if (!request.query[key]) {
+      return
+    }
+    queryString.data.properties[key] = request.query[key]
+  })
+
+  // Restore persisted params
+  const restoredParams = restorePersistedParams(request, response)
+  if (Object.keys(restoredParams).length > 0) {
+    for (let key in restoredParams) {
+      if (queryString.data.properties[key]) {
+        continue
+      }
+      queryString.data.properties[key] = restoredParams[key]
+    }
+  }
+
+  logger.debug("API > Query/data:", queryString.data)
+  const returnDataString = JSON.stringify(queryString.data)
+  queryString.data = Buffer.from(returnDataString, "utf-8").toString("base64")
+  return queryString
+}
+
 function isValidMixpanelToken(token) {
   if (!token) {
     return false
@@ -84,7 +130,8 @@ function logRequestResponse(response) {
 // Alternative to the mixpanel library, which persists things like utm_* as
 // Super Properties.
 // Useful where JS is unavailable like tracking pixels or click redirects.
-function paramCookiePersister(request, response, next) {
+// Returns persisted params
+function persistParamsAsCookies(request, response) {
   let cookieParams = {}
   COOKIE_PERSISTED_PARAMS.forEach((key) => {
     if (!request.query[key]) {
@@ -93,8 +140,7 @@ function paramCookiePersister(request, response, next) {
     cookieParams[key] = request.query[key]
   })
   if (Object.keys(cookieParams).length === 0) {
-    next()
-    return
+    return {}
   }
   let options = {
     httpOnly: true,
@@ -107,7 +153,15 @@ function paramCookiePersister(request, response, next) {
   }
   logger.debug(`<< Cookie: ${PERSISTED_COOKIE_NAME}:`, cookieParams)
   response.cookie(PERSISTED_COOKIE_NAME, cookieParams, options)
-  next()
+  return cookieParams
+}
+
+function restorePersistedParams(request, response) {
+  if (!request.cookies[PERSISTED_COOKIE_NAME]) {
+    return {}
+  }
+  // TODO: More logics
+  return request.cookies[PERSISTED_COOKIE_NAME]
 }
 
 
@@ -117,26 +171,13 @@ function paramCookiePersister(request, response, next) {
 // https://mixpanel.com/help/reference/http
 function mixpanelTrack(request, response) {
   try {
-    const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
-    const data = JSON.parse(dataString)
     logger.info(`-> ${request.method} /track`)
-    if (!isValidMixpanelTrackData(data)) {
-      throw "Invalid data"
-    }
-
-    // /track supports other params but not sure if we want them
-    let queryString = {}
-    const queryStringParams = ["data", "img", "verbose"]
-    queryStringParams.forEach((value) => {
-      if (!request.query[value]) {
-        return
-      }
-      queryString[value] = request.query[value]
-    })
+    // Save certain query params across requests with cookies
+    persistParamsAsCookies(request, response)
+    const queryString = buildMixpanelTrackQueryString(request, response)
     const mixpanelRequestOptions = {
       headers: {
-        // 'Cookie': request.headers.cookie,
-        'User-Agent': USER_AGENT
+        "User-Agent": USER_AGENT
       },
       qs: queryString
     }
@@ -182,7 +223,6 @@ if (COOKIE_SIGNING_SECRET) {
 } else {
   express.use(CookieParser())
 }
-express.use(paramCookiePersister)
 if (LOG_LEVEL === "debug") {
   express.use(debugLogger)
 }

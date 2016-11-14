@@ -57,8 +57,9 @@ var logger = new (Winston.Logger)({
 // - Certain other query params, moved from top level into query data.properties
 // - Persisted params from previous requests, via cookies
 function buildMixpanelTrackQueryString(request, response) {
-  const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
-  const data = JSON.parse(dataString)
+  const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
+  // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
+  const data = JSON.parse(dataString.replace(/'/g, "\""))
   if (!isValidMixpanelTrackData(data)) {
     throw "Invalid data"
   }
@@ -102,13 +103,17 @@ function isValidMixpanelToken(token) {
   if (!token) {
     return false
   }
-  return MIXPANEL_TOKEN_WHITELIST.includes(token)
+  // HACK: Handle mixpanel iOS Swift 2.x library which sends token as "Optional({token})"
+  return MIXPANEL_TOKEN_WHITELIST.some((whitelistToken) => {
+    return token.includes(whitelistToken)
+  })
 }
 
 // Log additional things in development environments.
 function debugLogger(request, response, next) {
-  const dataString = Buffer.from(request.query.data, "base64").toString("utf-8")
-  const data = JSON.parse(dataString)
+  const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
+  // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
+  const data = JSON.parse(dataString.replace(/'/g, "\""))
   logger.debug("-> Headers:", request.headers)
   if (request.cookies) {
     for (let cookieName in request.cookies) {

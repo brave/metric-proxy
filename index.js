@@ -55,6 +55,10 @@ var logger = new (Winston.Logger)({
 // - Certain other query params, moved from top level into query data.properties
 // - Persisted params from previous requests, via cookies
 function buildMixpanelTrackQueryString(request, response) {
+  if (!request.query.data) {
+    throw "Query missing"
+  }
+
   const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
   // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
   const data = JSON.parse(dataString.replace(/'/g, "\""))
@@ -109,6 +113,12 @@ function isValidMixpanelToken(token) {
 
 // Log additional things in development environments.
 function debugLogger(request, response, next) {
+  if (!request.query.data) {
+    logger.debug("-> Query: (empty)")
+    next()
+    return
+  }
+
   const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
   // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
   const data = JSON.parse(dataString.replace(/'/g, "\""))

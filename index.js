@@ -3,6 +3,8 @@
 // Dependencies
 // ===
 
+const BodyParser = require('body-parser')
+
 const CookieParser = require("cookie-parser")
 
 // web server
@@ -113,23 +115,32 @@ function isValidMixpanelToken(token) {
 
 // Log additional things in development environments.
 function debugLogger(request, response, next) {
-  if (!request.query.data) {
-    logger.debug("-> Query: (empty)")
-    next()
-    return
-  }
-
-  const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
-  // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
-  const data = JSON.parse(dataString.replace(/'/g, "\""))
   logger.debug("-> Headers:", request.headers)
   if (request.cookies) {
     for (let cookieName in request.cookies) {
       logger.debug(`-> Cookie: ${cookieName}:`, request.cookies[cookieName])
     }
   }
-  logger.debug("-> Query:", request.query)
-  logger.debug("-> Data:", data)
+
+  if (request.query.data) {
+    logger.debug("-> Query:", request.query)
+    const dataString = decodeURI(Buffer.from(request.query.data, "base64").toString("utf-8"))
+    // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
+    const data = JSON.parse(dataString.replace(/'/g, "\""))
+    logger.debug("-> Query data:", data)
+  } else {
+    logger.debug("-> Query: (empty)")
+  }
+
+  if (request.body) {
+    logger.debug("-> Body:", request.body)
+    // HACK: Handle mixpanel iOS Swift 2.x library which sends single quoted JSON.
+    const dataBody = JSON.parse(request.body.replace(/'/g, "\""))
+    logger.debug("-> Body data:", dataBody)
+  } else {
+    logger.debug("-> Body: (empty)")
+  }
+
   next()
 }
 
@@ -236,6 +247,7 @@ if (COOKIE_SIGNING_SECRET) {
 } else {
   express.use(CookieParser())
 }
+express.use(BodyParser.text({type: "*/*"}))
 if (LOG_LEVEL === "debug") {
   express.use(debugLogger)
 }

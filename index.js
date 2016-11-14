@@ -25,9 +25,7 @@ const MIXPANEL_API_HOST = process.env.MIXPANEL_API_HOST || "https://api.mixpanel
 // e.g. token1234a,token5678b
 const MIXPANEL_TOKEN_WHITELIST = process.env.MIXPANEL_TOKEN_WHITELIST.split(",")
 const NODE_ENV = process.env.NODE_ENV || "development"
-const LOG_LEVEL = NODE_ENV === "production"
-  ? "info"
-  : "debug"
+const LOG_LEVEL = process.env.LOG_LEVEL || (NODE_ENV === "production" ? "info" : "debug")
 const COOKIE_PERSISTED_PARAMS = process.env.COOKIE_PERSISTED_PARAMS
   ? process.env.COOKIE_PERSISTED_PARAMS.split(",")
   : ["campaign", "creative", "placement", "referer", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]

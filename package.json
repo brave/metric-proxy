@@ -10,7 +10,6 @@
     "cookie-parser": "^1.4.3",
     "express": "^4.14.0",
     "mixpanel": "^0.5.0",
-    "pryjs": "^1.0.3",
     "request": "^2.75.0",
     "winston": "^2.2.0"
   },

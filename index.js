@@ -86,6 +86,43 @@ function mixpanelTrackGet(request, response) {
   }
 }
 
+function mixpanelTrackPost(request, response) {
+  try {
+    logger.info(`-> ${request.method} /track`)
+    // Save certain query params across requests with cookies
+    cookieUtil.persistParamsAsCookies(request, response)
+    const data = mixpanelUtil.buildMixpanelTrackBody(request, response)
+    const mixpanelRequestOptions = {
+      method: "POST",
+      headers: {
+        "User-Agent": USER_AGENT
+      },
+      form: data
+    }
+
+    logger.debug(`API > ${request.method} ${MIXPANEL_API_HOST}/track`, mixpanelRequestOptions)
+    Request(`${MIXPANEL_API_HOST}/track`, mixpanelRequestOptions).
+      on("error", (error) => {
+        logger.error(error)
+        response.status(502).send("0")
+      }).
+      on("response", function(response) {
+        if (LOG_LEVEL === "debug") {
+          logRequestResponse(response)
+        }
+      }).
+      pipe(response)
+
+  } catch (_e) {
+    if (_e.stack) {
+      logger.error(_e.stack.split("\n").slice(0, 4).join(";"))
+    } else {
+      logger.error(_e)
+    }
+    response.send("0")
+  }
+}
+
 
 // App
 // ===
@@ -113,7 +150,7 @@ express.get("/", (request, response) => {
 })
 
 express.get("/track", mixpanelTrackGet)
-express.post("/track", mixpanelTrackGet)
+express.post("/track", mixpanelTrackPost)
 
 express.listen(PORT)
 

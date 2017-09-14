@@ -1,0 +1,5 @@
+{
+  "mixpanelApiHost": "MIXPANEL_API_HOST",
+  "logLevel": "LOG_LEVEL",
+  "port": "PORT"
+}

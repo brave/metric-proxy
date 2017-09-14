@@ -1,0 +1,5 @@
+{
+  "logLevel": "debug",
+  "mixpanelApiHost": "https://api.mixpanel.com",
+  "port": "4000"
+}

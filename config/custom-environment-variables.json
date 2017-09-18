@@ -1,0 +1,6 @@
+{
+  "mixpanelApiHost": "MIXPANEL_API_HOST",
+  "mixpanelTokenWhitelist": "MIXPANEL_TOKEN_WHITELIST",
+  "logLevel": "LOG_LEVEL",
+  "port": "PORT"
+}

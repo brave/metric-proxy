@@ -26,6 +26,6 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "tape test/**/*Test.js"
+    "test": "NODE_ENV=test tape test/**/*Test.js"
   }
 }
